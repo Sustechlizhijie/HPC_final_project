@@ -4,17 +4,17 @@ static char help[] = "Expilict Euler for 1D heat problem .\n\n";
 #include <petscmath.h>
 #include <math.h>
 
-
+#define pi acos(-1)   /* define pi */
 
 int main(int argc,char **args)
 {
   Vec            x, z, b;          
   Mat            A;                /* linear system matrix */
-  PetscReal      norm = 0.0, normt = 1.0, tol=1000.*PETSC_MACHINE_EPSILON;  /* norm of solution error */
   PetscErrorCode ierr;
-  PetscInt       i,n = 201 ,col[3],rstart,rend,nlocal,rank;
-  PetscReal      dx=1/(n-1), dt=0.00001, p=1.0, c=1.0, k=1.0;
-  PetscScalar    zero = 0.0, value[3];
+  PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank;
+  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx;
+  PetscReal      dt=0.00001, t=0.0
+  PetscScalar    zero = 0.0, value[3] u0=0.0;
 
   ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;
   ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
@@ -22,11 +22,14 @@ int main(int argc,char **args)
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr);
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr);
 
-  alpha = k/p/c
-  beta = alpha*dt/dx/dx
+  dx=1.0/n;
+  alpha = k/p/c;
+  beta = alpha*dt/dx/dx;
+  ierr = PetscPrintf(PETSC_COMM_WORLD,"dx = %f\n",dx);CHKERRQ(ierr); /* check the value */
+  ierr = PetscPrintf(PETSC_COMM_WORLD,"beta = %f\n",beta);CHKERRQ(ierr);
 
   ierr = VecCreate(PETSC_COMM_WORLD,&x);CHKERRQ(ierr);
-  ierr = VecSetSizes(x,PETSC_DECIDE,n);CHKERRQ(ierr);
+  ierr = VecSetSizes(x,PETSC_DECIDE,n+1);CHKERRQ(ierr);
   ierr = VecSetFromOptions(x);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&z);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&b);CHKERRQ(ierr);
