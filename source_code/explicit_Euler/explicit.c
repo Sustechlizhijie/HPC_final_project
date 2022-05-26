@@ -12,8 +12,8 @@ int main(int argc,char **args)
   Mat            A;                /* linear system matrix */
   PetscErrorCode ierr;
   PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank;
-  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx;
-  PetscReal      dt=0.00001, t=0.0
+  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix;
+  PetscReal      dt=0.00001, t=0.0;
   PetscScalar    zero = 0.0, value[3] u0=0.0;
 
   ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;
@@ -46,14 +46,14 @@ int main(int argc,char **args)
   if (!rstart) 
   {
     rstart = 1;
-    i      = 0; col[0] = 0.0; col[1] = 1.0; value[0] = 1.0-2.0*beta; value[1] = beta;
+    i      = 0; col[0] = 0; col[1] = 1; value[0] = 1.0-2.0*beta; value[1] = beta;
     ierr   = MatSetValues(A,1,&i,2,col,value,INSERT_VALUES);CHKERRQ(ierr);
   }
   
-  if (rend == n) 
+  if (rend == n+1) 
   {
-    rend = n-1;
-    i    = n-1; col[0] = n-2; col[1] = n-1; value[0] = beta; value[1] = 1.0-2.0*beta;
+    rend = n;
+    i    = n; col[0] = n-1; col[1] = n; value[0] = beta; value[1] = 1.0-2.0*beta;
     ierr = MatSetValues(A,1,&i,2,col,value,INSERT_VALUES);CHKERRQ(ierr);
   }
 
@@ -72,40 +72,43 @@ int main(int argc,char **args)
 
   ierr = VecSet(z,zero);CHKERRQ(ierr);
   if(rank == 0){
-      for(int i=0; i<n; i++){
-        PetscReal u0;
-        i = 0;
-	    ierr = VecSetValues(z, 1, &i, &one, INSERT_VALUES);CHKERRQ(ierr);
+      for(int i=1; i<n; i++){
+        ix = i*dx;
+        u0 = exp(ix);
+	      ierr = VecSetValues(z, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
       }
-	  
   }
   
   ierr = VecAssemblyBegin(z);CHKERRQ(ierr);
   ierr = VecAssemblyEnd(z);CHKERRQ(ierr);
-  
+  ix = 0.0;
+
   ierr = VecSet(b,zero);CHKERRQ(ierr);
   if(rank == 0){
-    for(int i = 0; i < n; i++){
-	  PetscReal inp;
-      inp = dt*sin(pi*(i+1.0)*dx);
-	  ierr = VecSetValues(b, 1, &i, &inp, INSERT_VALUES);CHKERRQ(ierr);
+    for(int i = 1; i < n+1; i++){
+      PetscReal f;
+      f = dt*sin(i*dx*pi);
+      ierr = VecSetValues(b, 1, &i, &f, INSERT_VALUES);CHKERRQ(ierr);
     }
   }
 
   ierr = VecAssemblyBegin(b);CHKERRQ(ierr);
   ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
 
-  while(PetscAbsReal(norm-normt)>tol){
-     normt= norm;
+  while(PetscAbsReal(t)<3.0){
+     t += dt;
      ierr = MatMult(A,z,x);CHKERRQ(ierr);
-     ierr = VecNorm(x,NORM_2,&norm);CHKERRQ(ierr);
-     ierr = VecScale(x,(PetscScalar)1.0/norm);CHKERRQ(ierr);
      ierr = VecAXPY(x,1.0,b);CHKERRQ(ierr);
+
+     ierr = VecSetValues(x, 1, &start, &zero, INSERT_VALUES);CHKERRQ(ierr);
+     ierr = VecSetValues(x, 1, &end, &zero, INSERT_VALUES);CHKERRQ(ierr);
+     ierr = VecAssemblyBegin(x);CHKERRQ(ierr);
+     ierr = VecAssemblyEnd(x);CHKERRQ(ierr);
      ierr = VecCopy(x,z);CHKERRQ(ierr);
+
   }
   
   ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-  ierr = PetscPrintf(PETSC_COMM_WORLD,"solution = %f\n",norm);CHKERRQ(ierr);
  
   ierr = VecDestroy(&x);CHKERRQ(ierr); 
   ierr = VecDestroy(&z);CHKERRQ(ierr);
