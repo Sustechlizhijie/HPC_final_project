@@ -13,12 +13,12 @@ int main(int argc,char **args)
   PetscErrorCode ierr;             /* error checking */
   PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix;/* pck is the physic parameter */
-  PetscReal      dt=0.00001, t=0.0;   /* time step */
-  PetscScalar    zero = 0.0, value[3] u0=0.0;  /* u0 initial condition */
+  PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
+  PetscScalar    zero = 0.0, value[3];  /* u0 initial condition */
 
   ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;/* initial petsc */
   ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr); /* read dt from command line */
-  ierr = PetscOptionsGetReal(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr); /* read n from command line */
+  ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr); /* read n from command line */
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr); /* set up for MPI */
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr); /* print n */
 
@@ -38,7 +38,7 @@ int main(int argc,char **args)
   ierr = VecGetLocalSize(x,&nlocal);CHKERRQ(ierr);  /* query the layout */
 
   ierr = MatCreate(PETSC_COMM_WORLD,&A);CHKERRQ(ierr);  /* create matrix A */
-  ierr = MatSetSizes(A,nlocal,nlocal,n,n);CHKERRQ(ierr); /* matrix size*/
+  ierr = MatSetSizes(A,nlocal,nlocal,n+1,n+1);CHKERRQ(ierr); /* matrix size*/
   ierr = MatSetFromOptions(A);CHKERRQ(ierr);  /* enable option */
   ierr = MatSetUp(A);CHKERRQ(ierr); 
 
@@ -106,9 +106,15 @@ int main(int argc,char **args)
      ierr = VecCopy(x,z);CHKERRQ(ierr);  /* copy x into z*/
 
   }
-  
+
   ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
  
+   /*Viewer to output in HDF5 format*/
+    PetscViewer pv;
+    PetscViewerCreate(PETSC_COMM_WORLD,&pv);
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
+    VecView(z, pv);
+    PetscViewerDestroy(&pv);
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&x);CHKERRQ(ierr);  
   ierr = VecDestroy(&z);CHKERRQ(ierr);
