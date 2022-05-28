@@ -1,5 +1,5 @@
 #!/bin/bash
-#BSUB -J explicit_heat_problem
+#BSUB -J implicit_heat_problem
 #BSUB -q ser
 #BSUB -n 1
 #BSUB -e %J.err
@@ -9,7 +9,7 @@ module purge
 module load intel/2018.4
 module load mpi/intel/2018.4
 
-mpirun -np 1 ./explicit_heat.out -ksp_type gmres \
+mpirun -np 1 ./implicit_heat.out -ksp_type gmres \
   -ksp_gmres_restart 30 -ksp_rtol 1.0e-10 \
   -ksp_atol 1.0e-50 -ksp_max_it 1500 \
   -ksp_gmres_modifiedgramschmidt \

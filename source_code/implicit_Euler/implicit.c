@@ -8,8 +8,10 @@ static char help[] = "impilict Euler for 1D heat problem .\n\n";
 
 int main(int argc,char **args)
 {
-  Vec            x, z, b;          /* build the vecotr */
+  Vec            x, b, u;          /* build the vecotr */
   Mat            A;                /* build the  matrix */
+  KSP            ksp;
+  PC             pc;
   PetscErrorCode ierr;             /* error checking */
   PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix;/* pck is the physic parameter */
@@ -46,18 +48,18 @@ int main(int argc,char **args)
   if (!rstart)      /* set the first line element */
   {
     rstart = 1;
-    i      = 0; col[0] = 0; col[1] = 1; value[0] = 1.0-2.0*beta; value[1] = beta; /* give values */
+    i      = 0; col[0] = 0; col[1] = 1; value[0] = 1.0+2.0*beta; value[1] = -beta; /* give values */
     ierr   = MatSetValues(A,1,&i,2,col,value,INSERT_VALUES);CHKERRQ(ierr); /* set values */
   }
   
   if (rend == n+1)    /* set the final line element */
   {
     rend = n;
-    i    = n; col[0] = n-1; col[1] = n; value[0] = beta; value[1] = 1.0-2.0*beta;  /* give values */
+    i    = n; col[0] = n-1; col[1] = n; value[0] = -beta; value[1] = 1.0+2.0*beta;  /* give values */
     ierr = MatSetValues(A,1,&i,2,col,value,INSERT_VALUES);CHKERRQ(ierr); /* set values */
   }
 
-  value[0] = beta; value[1] = 1.0-2.0*beta; value[2] = beta;   /* set the rest line element */
+  value[0] = -beta; value[1] = 1.0+2.0*beta; value[2] = -beta;   /* set the rest line element */
   for (i=rstart; i<rend; i++) 
   {
     col[0] = i-1; col[1] = i; col[2] = i+1;
@@ -69,55 +71,67 @@ int main(int argc,char **args)
   ierr = MatView(A, PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);   /* print the matrix */
 
 
-  ierr = VecSet(z,zero);CHKERRQ(ierr);  /* set vector */
+  ierr = VecSet(b,zero);CHKERRQ(ierr);  /* set vector */
   if(rank == 0){
       for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
         ix = i*dx;
         u0 = exp(ix);  /* set u0 */
-	      ierr = VecSetValues(z, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
+	      ierr = VecSetValues(b, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
       }
   }
   
-  ierr = VecAssemblyBegin(z);CHKERRQ(ierr); /* Assemble the vector*/
-  ierr = VecAssemblyEnd(z);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(b);CHKERRQ(ierr); /* Assemble the vector*/
+  ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
   ix = 0.0;   /* set restart value */
 
-  ierr = VecSet(b,zero);CHKERRQ(ierr); /* set initial vectot b */
+  ierr = VecSet(u,zero);CHKERRQ(ierr); /* set initial vectot b */
   if(rank == 0){
     for(int i = 1; i < n; i++){  /* from 1 to n-1 point*/
       PetscReal f;   /* temp value for heat supply term */
       f = dt*sin(i*dx*pi); /* heat supply value */
-      ierr = VecSetValues(b, 1, &i, &f, INSERT_VALUES);CHKERRQ(ierr); /* set value */
+      ierr = VecSetValues(u, 1, &i, &f, INSERT_VALUES);CHKERRQ(ierr); /* set value */
     }
   }
 
-  ierr = VecAssemblyBegin(b);CHKERRQ(ierr);  /* Assemble the vector*/
-  ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(u);CHKERRQ(ierr);  /* Assemble the vector*/
+  ierr = VecAssemblyEnd(u);CHKERRQ(ierr); 
+  ierr = VecView(u,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr); 
+
+
+  ierr = KSPCreate(PETSC_COMM_WORLD,&ksp);CHKERRQ(ierr);
+  ierr = KSPSetOperators(ksp,A,A);CHKERRQ(ierr);
+  ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);    
+  ierr = PCSetType(pc,PCJACOBI);CHKERRQ(ierr);   
+  ierr = KSPSetTolerances(ksp,1.e-10,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);CHKERRQ(ierr);    /*设置各种误差值*/
+  ierr = KSPSetFromOptions(ksp);CHKERRQ(ierr);   
+
+
 
   while(PetscAbsReal(t)<3.0){   /* set the caculate time */
      t += dt;   /* time advance*/
-     ierr = MatMult(A,z,x);CHKERRQ(ierr); /* Az-->x*/
-     ierr = VecAXPY(x,1.0,b);CHKERRQ(ierr); /* x+b-->x*/
+
+     ierr = VecAXPY(b,1.0,u);CHKERRQ(ierr);    /*设置方程右边项的值*/
+     ierr = KSPSolve(ksp,b,x);CHKERRQ(ierr);    /*求解方程*/
 
      ierr = VecSetValues(x, 1, &start, &zero, INSERT_VALUES);CHKERRQ(ierr); /* set value*/
      ierr = VecSetValues(x, 1, &end, &zero, INSERT_VALUES);CHKERRQ(ierr);
      ierr = VecAssemblyBegin(x);CHKERRQ(ierr); /* Assemble the vector*/
      ierr = VecAssemblyEnd(x);CHKERRQ(ierr);
-     ierr = VecCopy(x,z);CHKERRQ(ierr);  /* copy x into z*/
+     ierr = VecCopy(x,b);CHKERRQ(ierr);  /* copy x into z*/
 
   }
 
-  ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
+  ierr = VecView(b,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
  
    /*Viewer to output in HDF5 format*/
     PetscViewer pv;
     PetscViewerCreate(PETSC_COMM_WORLD,&pv);
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final_implicit.dat",&pv);
     VecView(z, pv);
     PetscViewerDestroy(&pv);
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&x);CHKERRQ(ierr);  
-  ierr = VecDestroy(&z);CHKERRQ(ierr);
+  ierr = VecDestroy(&u);CHKERRQ(ierr);
   ierr = VecDestroy(&b);CHKERRQ(ierr);
   ierr = MatDestroy(&A);CHKERRQ(ierr);
 

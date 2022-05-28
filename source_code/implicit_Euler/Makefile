@@ -52,7 +52,7 @@ print:
 	@echo CUDA_INCLUDE=$(CUDA_INCLUDE)
 
 # Files
-EXEC := explicit_heat.out
+EXEC := implicit_heat.out
 SRC := $(wildcard *.c)
 OBJ := $(patsubst %.c,%.o,$(SRC))
 

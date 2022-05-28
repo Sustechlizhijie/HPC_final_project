@@ -1,0 +1,62 @@
+Sender: LSF System <lsfadmin@r01n21>
+Subject: Job 3783178: <implicit_heat_problem> in cluster <sustchpc> Exited
+
+Job <implicit_heat_problem> was submitted from host <login02> by user <mae-lizj> in cluster <sustchpc> at Sat May 28 10:50:35 2022.
+Job was executed on host(s) <r01n21>, in queue <ser>, as user <mae-lizj> in cluster <sustchpc> at Sat May 28 10:50:36 2022.
+</work/mae-lizj> was used as the home directory.
+</work/mae-lizj/HPC_testing/final_project/implicit_Euler> was used as the working directory.
+Started at Sat May 28 10:50:36 2022.
+Terminated at Sat May 28 10:50:41 2022.
+Results reported at Sat May 28 10:50:41 2022.
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J implicit_heat_problem
+#BSUB -q ser
+#BSUB -n 1
+#BSUB -e %J.err
+#BSUB -o %J.out
+
+module purge
+module load intel/2018.4
+module load mpi/intel/2018.4
+
+mpirun -np 1 ./implicit_heat.out -ksp_type gmres \
+  -ksp_gmres_restart 30 -ksp_rtol 1.0e-10 \
+  -ksp_atol 1.0e-50 -ksp_max_it 1500 \
+  -ksp_gmres_modifiedgramschmidt \
+  -pc_type asm \
+  -sub_ksp_type richardson \
+  -sub_pc_type icc -ksp_monitor_short \
+  -ksp_converged_reason \
+  -ksp_view \
+  -log_view > $LSB_JOBID.log 2>&1
+
+------------------------------------------------------------
+
+Exited with exit code 62.
+
+Resource usage summary:
+
+    CPU time :                                   0.16 sec.
+    Max Memory :                                 3 MB
+    Average Memory :                             3.00 MB
+    Total Requested Memory :                     -
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              1
+    Max Threads :                                2
+    Run time :                                   3 sec.
+    Turnaround time :                            6 sec.
+
+The output (if any) follows:
+
+
+
+PS:
+
+Read file <3783178.err> for stderr output of this job.
+
