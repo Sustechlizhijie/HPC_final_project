@@ -24,6 +24,8 @@ int main(int argc,char **args)
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr); /* set up for MPI */
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr); /* print n */
 
+  end=n; /* update the n value */
+
   dx=1.0/n;
   alpha = k/p/c;
   beta = alpha*dt/dx/dx;
@@ -33,8 +35,8 @@ int main(int argc,char **args)
   ierr = VecCreate(PETSC_COMM_WORLD,&x);CHKERRQ(ierr);/* create vector */
   ierr = VecSetSizes(x,PETSC_DECIDE,n+1);CHKERRQ(ierr); /* vector size*/
   ierr = VecSetFromOptions(x);CHKERRQ(ierr);  /* enable option */
-  ierr = VecDuplicate(x,&z);CHKERRQ(ierr);  /* copy the type and layout */
-  ierr = VecDuplicate(x,&b);CHKERRQ(ierr);
+  ierr = VecDuplicate(x,&b);CHKERRQ(ierr);  /* copy the type and layout */
+  ierr = VecDuplicate(x,&u);CHKERRQ(ierr);
 
   ierr = VecGetOwnershipRange(x,&rstart,&rend);CHKERRQ(ierr); /* set start and end */
   ierr = VecGetLocalSize(x,&nlocal);CHKERRQ(ierr);  /* query the layout */
@@ -127,7 +129,7 @@ int main(int argc,char **args)
     PetscViewer pv;
     PetscViewerCreate(PETSC_COMM_WORLD,&pv);
     PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final_implicit.dat",&pv);
-    VecView(z, pv);
+    VecView(b, pv);
     PetscViewerDestroy(&pv);
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&x);CHKERRQ(ierr);  
