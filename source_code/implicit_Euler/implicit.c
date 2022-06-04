@@ -14,7 +14,7 @@ int main(int argc,char **args)
   PC             pc;
   PetscErrorCode ierr;             /* error checking */
   PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank; /* n is region */
-  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix;/* pck is the physic parameter */
+  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3];  /* u0 initial condition */
 
@@ -76,8 +76,7 @@ int main(int argc,char **args)
   ierr = VecSet(b,zero);CHKERRQ(ierr);  /* set vector */
   if(rank == 0){
       for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
-        ix = i*dx;
-        u0 = exp(ix);  /* set u0 */
+        u0 = exp(i*dx);  /* set u0 */
 	      ierr = VecSetValues(b, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
       }
   }
@@ -89,7 +88,6 @@ int main(int argc,char **args)
   ierr = VecSet(u,zero);CHKERRQ(ierr); /* set initial vectot b */
   if(rank == 0){
     for(int i = 1; i < n; i++){  /* from 1 to n-1 point*/
-      PetscReal f;   /* temp value for heat supply term */
       f = dt*sin(i*dx*pi); /* heat supply value */
       ierr = VecSetValues(u, 1, &i, &f, INSERT_VALUES);CHKERRQ(ierr); /* set value */
     }
@@ -112,8 +110,8 @@ int main(int argc,char **args)
   while(PetscAbsReal(t)<3.0){   /* set the caculate time */
      t += dt;   /* time advance*/
 
-     ierr = VecAXPY(b,1.0,u);CHKERRQ(ierr);    /*设置方程右边项的值*/
-     ierr = KSPSolve(ksp,b,x);CHKERRQ(ierr);    /*求解方程*/
+     ierr = VecAXPY(b,1.0,u);CHKERRQ(ierr);    /*right hand size value*/
+     ierr = KSPSolve(ksp,b,x);CHKERRQ(ierr);    /*sovle it*/
 
      ierr = VecSetValues(x, 1, &start, &zero, INSERT_VALUES);CHKERRQ(ierr); /* set value*/
      ierr = VecSetValues(x, 1, &end, &zero, INSERT_VALUES);CHKERRQ(ierr);

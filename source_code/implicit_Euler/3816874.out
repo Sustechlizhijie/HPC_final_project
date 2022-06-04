@@ -1,13 +1,13 @@
-Sender: LSF System <lsfadmin@r01n04>
-Subject: Job 3808396: <implicit_heat_problem> in cluster <sustchpc> Done
+Sender: LSF System <lsfadmin@r01n26>
+Subject: Job 3816874: <implicit_heat_problem> in cluster <sustchpc> Done
 
-Job <implicit_heat_problem> was submitted from host <login02> by user <mae-lizj> in cluster <sustchpc> at Tue May 31 23:36:56 2022.
-Job was executed on host(s) <r01n04>, in queue <ser>, as user <mae-lizj> in cluster <sustchpc> at Tue May 31 23:36:58 2022.
+Job <implicit_heat_problem> was submitted from host <login02> by user <mae-lizj> in cluster <sustchpc> at Sat Jun  4 22:03:00 2022.
+Job was executed on host(s) <r01n26>, in queue <ser>, as user <mae-lizj> in cluster <sustchpc> at Sat Jun  4 22:03:01 2022.
 </work/mae-lizj> was used as the home directory.
 </work/mae-lizj/HPC_testing/final_project/implicit_Euler> was used as the working directory.
-Started at Tue May 31 23:36:58 2022.
-Terminated at Tue May 31 23:37:50 2022.
-Results reported at Tue May 31 23:37:50 2022.
+Started at Sat Jun  4 22:03:01 2022.
+Terminated at Sat Jun  4 22:03:54 2022.
+Results reported at Sat Jun  4 22:03:54 2022.
 
 Your job looked like:
 
@@ -37,15 +37,15 @@ Successfully completed.
 
 Resource usage summary:
 
-    CPU time :                                   50.05 sec.
-    Max Memory :                                 26 MB
-    Average Memory :                             26.00 MB
+    CPU time :                                   50.00 sec.
+    Max Memory :                                 20 MB
+    Average Memory :                             20.00 MB
     Total Requested Memory :                     -
     Delta Memory :                               -
     Max Swap :                                   -
     Max Processes :                              7
     Max Threads :                                9
-    Run time :                                   51 sec.
+    Run time :                                   52 sec.
     Turnaround time :                            54 sec.
 
 The output (if any) follows:
@@ -54,5 +54,5 @@ The output (if any) follows:
 
 PS:
 
-Read file <3808396.err> for stderr output of this job.
+Read file <3816874.err> for stderr output of this job.
 
