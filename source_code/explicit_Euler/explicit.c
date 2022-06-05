@@ -13,7 +13,7 @@ int main(int argc,char **args)
   Vec            x, z, b, temp;          /* build the vecotr */
   Mat            A;                /* build the  matrix */
   PetscErrorCode ierr;             /* error checking */
-  PetscInt       i, n=200, start=0, end=n, iter=0, col[3], rstart,rend,nlocal,rank,index; /* n is region */
+  PetscInt       i, n=200, start=0, end=n, iteration=0, col[3], rstart,rend,nlocal,rank,index; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
@@ -87,14 +87,20 @@ int main(int argc,char **args)
 
   if(restart)
   {
-
-      keep update...
-
-
-
-
-
-
+    ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"explicit_heat.h5", FILE_MODE_READ, &h5);CHKERRQ(ierr);    
+    ierr = PetscObjectSetName((PetscObject) z, "explicit_heat_z");CHKERRQ(ierr);   
+    ierr = PetscObjectSetName((PetscObject) temp, "explicit_heat_temp");CHKERRQ(ierr); 
+    ierr = VecLoad(temp, h5);CHKERRQ(ierr);   
+    ierr = VecLoad(z, h5);CHKERRQ(ierr);    
+    ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);   
+    
+    index=0;   
+    ierr = VecGetValues(temp,1,&index,&dx);CHKERRQ(ierr);    
+    index += 1;    
+    ierr = VecGetValues(temp,1,&index,&dt);CHKERRQ(ierr);    
+    index += 1;  
+    ierr = VecGetValues(temp,1,&index,&t);CHKERRQ(ierr);   
+    index= 0;   
   }
   else
   {
@@ -122,8 +128,6 @@ int main(int argc,char **args)
   ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
 
 
-
-
   while(PetscAbsReal(t)<3.0){   /* set the caculate time */
      t += dt;   /* time advance*/
      ierr = MatMult(A,z,x);CHKERRQ(ierr); /* Az-->x*/
@@ -135,6 +139,27 @@ int main(int argc,char **args)
      ierr = VecAssemblyEnd(x);CHKERRQ(ierr);
      ierr = VecCopy(x,z);CHKERRQ(ierr);  /* copy x into z*/
 
+     iteration += 1;
+     if((iteration % 10) == 0)
+     {
+        data[0] = dx; data[1] = dt; data[2] = t;   
+        ierr = VecSet(temp,zero);CHKERRQ(ierr);    
+        for(index = 0; index < 3; index++)
+        {   
+          u0 = data[index];   
+          ierr = VecSetValues(temp,1,&index,&u0,INSERT_VALUES);CHKERRQ(ierr);   
+        }
+        ierr = VecAssemblyBegin(temp);CHKERRQ(ierr);   
+        ierr = VecAssemblyEnd(temp);CHKERRQ(ierr);  
+
+        ierr = PetscViewerCreate(PETSC_COMM_WORLD,&h5);CHKERRQ(ierr);   
+        ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"explicit_heat.h5", FILE_MODE_WRITE, &h5);CHKERRQ(ierr);    
+        ierr = PetscObjectSetName((PetscObject) z, "explicit_heat_z");CHKERRQ(ierr);   
+        ierr = PetscObjectSetName((PetscObject) temp, "explicit_heat_temp");CHKERRQ(ierr);   
+        ierr = VecView(temp, h5);CHKERRQ(ierr);    
+        ierr = VecView(z, h5);CHKERRQ(ierr);   
+        ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr); 
+      }
   }
 
   ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
@@ -145,7 +170,9 @@ int main(int argc,char **args)
     PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
     VecView(z, pv);
     PetscViewerDestroy(&pv);
+
   /* deallocate the vector and matirx */
+  ierr = VecDestroy(&temp);CHKERRQ(ierr);  
   ierr = VecDestroy(&x);CHKERRQ(ierr);  
   ierr = VecDestroy(&z);CHKERRQ(ierr);
   ierr = VecDestroy(&b);CHKERRQ(ierr);
