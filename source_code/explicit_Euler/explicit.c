@@ -2,23 +2,32 @@ static char help[] = "Expilict Euler for 1D heat problem .\n\n";
 
 #include <petscksp.h>
 #include <petscmath.h>
+#include <petscsys.h>
+#include <petscviewerhdf5.h>
 #include <math.h>
 
 #define pi acos(-1)   /* define pi */
 
 int main(int argc,char **args)
 {
-  Vec            x, z, b;          /* build the vecotr */
+  Vec            x, z, b, temp;          /* build the vecotr */
   Mat            A;                /* build the  matrix */
   PetscErrorCode ierr;             /* error checking */
-  PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank; /* n is region */
+  PetscInt       i, n=200, start=0, end=n, iter=0, col[3], rstart,rend,nlocal,rank,index; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
-  PetscScalar    zero = 0.0, value[3];  /* u0 initial condition */
+  PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
+  PetscBool      restart = PETSC_FALSE; 
+  PetscViewer    h5; 
 
   ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;/* initial petsc */
+
+  ierr = PetscOptionsBegin(PETSC_COMM_WORLD,NULL,NULL,NULL);CHKERRQ(ierr); 
   ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr); /* read dt from command line */
   ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr); /* read n from command line */
+  ierr = PetscOptionsGetBool(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr);  
+  ierr = PetscOptionsEnd();CHKERRQ(ierr); 
+
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr); /* set up for MPI */
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr); /* print n */
 
@@ -26,7 +35,9 @@ int main(int argc,char **args)
   alpha = k/p/c;
   beta = alpha*dt/dx/dx;
   ierr = PetscPrintf(PETSC_COMM_WORLD,"dx = %f\n",dx);CHKERRQ(ierr); /* check the dx */
+  ierr = PetscPrintf(PETSC_COMM_WORLD,"dt = %f\n",dt);CHKERRQ(ierr); 
   ierr = PetscPrintf(PETSC_COMM_WORLD,"beta = %f\n",beta);CHKERRQ(ierr);/* check the beta */
+  ierr = PetscPrintf(PETSC_COMM_WORLD,"restart = %d\n",restart);CHKERRQ(ierr);
 
   ierr = VecCreate(PETSC_COMM_WORLD,&x);CHKERRQ(ierr);/* create vector */
   ierr = VecSetSizes(x,PETSC_DECIDE,n+1);CHKERRQ(ierr); /* vector size*/
