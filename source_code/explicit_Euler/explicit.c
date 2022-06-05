@@ -14,7 +14,7 @@ int main(int argc,char **args)
   Mat            A;                /* build the  matrix */
   PetscErrorCode ierr;             /* error checking */
   PetscInt       i, n=200, start=0, end=n, iter=0, col[3], rstart,rend,nlocal,rank,index; /* n is region */
-  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix;/* pck is the physic parameter */
+  PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
   PetscBool      restart = PETSC_FALSE; 
@@ -34,14 +34,20 @@ int main(int argc,char **args)
   dx=1.0/n;
   alpha = k/p/c;
   beta = alpha*dt/dx/dx;
+
   ierr = PetscPrintf(PETSC_COMM_WORLD,"dx = %f\n",dx);CHKERRQ(ierr); /* check the dx */
   ierr = PetscPrintf(PETSC_COMM_WORLD,"dt = %f\n",dt);CHKERRQ(ierr); 
   ierr = PetscPrintf(PETSC_COMM_WORLD,"beta = %f\n",beta);CHKERRQ(ierr);/* check the beta */
   ierr = PetscPrintf(PETSC_COMM_WORLD,"restart = %d\n",restart);CHKERRQ(ierr);
 
   ierr = VecCreate(PETSC_COMM_WORLD,&x);CHKERRQ(ierr);/* create vector */
+  ierr = VecCreate(PETSC_COMM_WORLD,&temp);CHKERRQ(ierr);/* create vector */
+
   ierr = VecSetSizes(x,PETSC_DECIDE,n+1);CHKERRQ(ierr); /* vector size*/
+  ierr = VecSetSizes(temp, 3, PETSC_DECIDE);CHKERRQ(ierr);
+
   ierr = VecSetFromOptions(x);CHKERRQ(ierr);  /* enable option */
+  ierr = VecSetFromOptions(temp);CHKERRQ(ierr);  /* enable option */
   ierr = VecDuplicate(x,&z);CHKERRQ(ierr);  /* copy the type and layout */
   ierr = VecDuplicate(x,&b);CHKERRQ(ierr);
 
@@ -76,27 +82,37 @@ int main(int argc,char **args)
   }
 
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);  /* Assemble the matrix */
-  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);    /* Assemble end*/
   ierr = MatView(A, PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);   /* print the matrix */
 
+  if(restart)
+  {
 
-  ierr = VecSet(z,zero);CHKERRQ(ierr);  /* set vector */
-  if(rank == 0){
-      for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
-        ix = i*dx;
-        u0 = exp(ix);  /* set u0 */
-	      ierr = VecSetValues(z, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
-      }
+      keep update...
+
+
+
+
+
+
   }
-  
-  ierr = VecAssemblyBegin(z);CHKERRQ(ierr); /* Assemble the vector*/
-  ierr = VecAssemblyEnd(z);CHKERRQ(ierr);
-  ix = 0.0;   /* set restart value */
+  else
+  {
+    ierr = VecSet(z,zero);CHKERRQ(ierr);  /* set vector */
+    if(rank == 0)
+    {
+        for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
+          u0 = exp(i*dx);  /* set u0 */
+          ierr = VecSetValues(z, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
+        }
+    }
+    ierr = VecAssemblyBegin(z);CHKERRQ(ierr); /* Assemble the vector*/
+    ierr = VecAssemblyEnd(z);CHKERRQ(ierr);
+  }
 
   ierr = VecSet(b,zero);CHKERRQ(ierr); /* set initial vectot b */
   if(rank == 0){
     for(int i = 1; i < n; i++){  /* from 1 to n-1 point*/
-      PetscReal f;   /* temp value for heat supply term */
       f = dt*sin(i*dx*pi); /* heat supply value */
       ierr = VecSetValues(b, 1, &i, &f, INSERT_VALUES);CHKERRQ(ierr); /* set value */
     }
@@ -104,6 +120,9 @@ int main(int argc,char **args)
 
   ierr = VecAssemblyBegin(b);CHKERRQ(ierr);  /* Assemble the vector*/
   ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
+
+
+
 
   while(PetscAbsReal(t)<3.0){   /* set the caculate time */
      t += dt;   /* time advance*/
