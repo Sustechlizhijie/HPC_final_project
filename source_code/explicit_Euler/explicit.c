@@ -13,20 +13,18 @@ int main(int argc,char **args)
   Vec            x, z, b, temp;          /* build the vecotr */
   Mat            A;                /* build the  matrix */
   PetscErrorCode ierr;             /* error checking */
-  PetscInt       i, n=200, start=0, end=n, iteration=0, col[3], rstart,rend,nlocal,rank,index; /* n is region */
+  PetscInt       i, n=100, start=0, end=n, iteration=0, col[3], rstart,rend,nlocal,rank,index; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
-  PetscBool      restart = PETSC_FALSE; 
+  PetscInt      restart = 0; 
   PetscViewer    h5; 
 
-  ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;/* initial petsc */
+  ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;    /*初始化Petsc*/
+  ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);    /*从命令行读取n的值（若有）*/
+  ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr);    /*从命令行读取dt的值（若有）*/
+  ierr = PetscOptionsGetInt(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr);    /*从命令行读取是否重启（若有）*/
 
-  ierr = PetscOptionsBegin(PETSC_COMM_WORLD,NULL,NULL,NULL);CHKERRQ(ierr); 
-  ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr); /* read dt from command line */
-  ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr); /* read n from command line */
-  ierr = PetscOptionsGetBool(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr);  
-  ierr = PetscOptionsEnd();CHKERRQ(ierr); 
 
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr); /* set up for MPI */
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr); /* print n */
@@ -85,7 +83,20 @@ int main(int argc,char **args)
   ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);    /* Assemble end*/
   ierr = MatView(A, PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);   /* print the matrix */
 
-  if(restart)
+
+ ierr = VecSet(z,zero);CHKERRQ(ierr);  /* set vector */
+    if(rank == 0)
+    {
+        for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
+          u0 = exp(i*dx);  /* set u0 */
+          ierr = VecSetValues(z, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
+        }
+    }
+    ierr = VecAssemblyBegin(z);CHKERRQ(ierr); /* Assemble the vector*/
+    ierr = VecAssemblyEnd(z);CHKERRQ(ierr);
+
+
+  if(restart > 0)
   {
     ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"explicit_heat.h5", FILE_MODE_READ, &h5);CHKERRQ(ierr);    
     ierr = PetscObjectSetName((PetscObject) z, "explicit_heat_z");CHKERRQ(ierr);   
@@ -102,19 +113,8 @@ int main(int argc,char **args)
     ierr = VecGetValues(temp,1,&index,&t);CHKERRQ(ierr);   
     index= 0;   
   }
-  else
-  {
-    ierr = VecSet(z,zero);CHKERRQ(ierr);  /* set vector */
-    if(rank == 0)
-    {
-        for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
-          u0 = exp(i*dx);  /* set u0 */
-          ierr = VecSetValues(z, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
-        }
-    }
-    ierr = VecAssemblyBegin(z);CHKERRQ(ierr); /* Assemble the vector*/
-    ierr = VecAssemblyEnd(z);CHKERRQ(ierr);
-  }
+
+
 
   ierr = VecSet(b,zero);CHKERRQ(ierr); /* set initial vectot b */
   if(rank == 0){
@@ -128,7 +128,7 @@ int main(int argc,char **args)
   ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
 
 
-  while(PetscAbsReal(t)<3.0){   /* set the caculate time */
+  while(PetscAbsReal(t)<2.0){   /* set the caculate time */
      t += dt;   /* time advance*/
      ierr = MatMult(A,z,x);CHKERRQ(ierr); /* Az-->x*/
      ierr = VecAXPY(x,1.0,b);CHKERRQ(ierr); /* x+b-->x*/
@@ -164,12 +164,12 @@ int main(int argc,char **args)
 
   ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
  
-   /*Viewer to output in HDF5 format*/
-    PetscViewer pv;
-    PetscViewerCreate(PETSC_COMM_WORLD,&pv);
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
-    VecView(z, pv);
-    PetscViewerDestroy(&pv);
+  //  /*Viewer to output in HDF5 format*/
+  //   PetscViewer pv;
+  //   PetscViewerCreate(PETSC_COMM_WORLD,&pv);
+  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
+  //   VecView(z, pv);
+  //   PetscViewerDestroy(&pv);
 
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&temp);CHKERRQ(ierr);  
