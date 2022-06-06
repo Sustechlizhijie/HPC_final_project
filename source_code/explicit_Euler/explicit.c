@@ -20,10 +20,10 @@ int main(int argc,char **args)
   PetscInt      restart = 0; 
   PetscViewer    h5; 
 
-  ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;    /*初始化Petsc*/
-  ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);    /*从命令行读取n的值（若有）*/
-  ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr);    /*从命令行读取dt的值（若有）*/
-  ierr = PetscOptionsGetInt(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr);    /*从命令行读取是否重启（若有）*/
+  ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;  
+  ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);    
+  ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr);   
+  ierr = PetscOptionsGetInt(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr);   
 
 
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr); /* set up for MPI */
@@ -164,11 +164,11 @@ int main(int argc,char **args)
 
   ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
  
-  //   PetscViewer pv;
-  //   PetscViewerCreate(PETSC_COMM_WORLD,&pv);
-  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
-  //   VecView(z, pv);
-  //   PetscViewerDestroy(&pv);
+    PetscViewer pv;
+    PetscViewerCreate(PETSC_COMM_WORLD,&pv);
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);
+    VecView(z, pv);
+    PetscViewerDestroy(&pv);
 
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&temp);CHKERRQ(ierr);  

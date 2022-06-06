@@ -15,7 +15,7 @@ int main(int argc,char **args)
   KSP            ksp;
   PC             pc;
   PetscErrorCode ierr;             /* error checking */
-  PetscInt       i, n=100, start=0, end=n, col[3], rstart,rend,nlocal,rank, iteration=0; /* n is region */
+  PetscInt       i, n=100, start=0, end=n, col[3], rstart,rend,nlocal,rank, iteration=0, index; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
@@ -102,18 +102,18 @@ int main(int argc,char **args)
   if(restart > 0)
    {   
       ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_READ, &h5);CHKERRQ(ierr);    
-      ierr = PetscObjectSetName((PetscObject) z, "implicit_heat_z");CHKERRQ(ierr);    
+      ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_b");CHKERRQ(ierr);    
       ierr = PetscObjectSetName((PetscObject) temp, "implicit_heat_temp");CHKERRQ(ierr);
       ierr = VecLoad(temp, h5);CHKERRQ(ierr);    
-      ierr = VecLoad(z, h5);CHKERRQ(ierr);    
+      ierr = VecLoad(b, h5);CHKERRQ(ierr);    
       ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);  
 
       index=0;    
-      ierr = VecGetValues(tem,1,&index,&dx);CHKERRQ(ierr);    
+      ierr = VecGetValues(temp,1,&index,&dx);CHKERRQ(ierr);    
       index += 1;    
-      ierr = VecGetValues(tem,1,&index,&dt);CHKERRQ(ierr);   
+      ierr = VecGetValues(temp,1,&index,&dt);CHKERRQ(ierr);   
       index += 1;   
-      ierr = VecGetValues(tem,1,&index,&t);CHKERRQ(ierr);   
+      ierr = VecGetValues(temp,1,&index,&t);CHKERRQ(ierr);   
       index= 0;   
     }
 
@@ -152,26 +152,26 @@ int main(int argc,char **args)
      ierr = VecAssemblyEnd(x);CHKERRQ(ierr);
      ierr = VecCopy(x,b);CHKERRQ(ierr);  /* copy x into z*/
 
-      iter += 1;    /*记录迭代次数*/
-        if((iter%10)==0)
-        {    /*如果迭代次数为10的倍数，即每迭代十次*/
+      iteration += 1;    
+        if((iteration % 10)==0)
+        {    
 
-          data[0] = dx; data[1] = dt; data[2] = t;    /*将值赋给数组*/
-          ierr = VecSet(temp,zero);CHKERRQ(ierr);    /*初始化矩阵*/
-          for(index=0;index<3;index++){    /*循环遍历数组，并将值赋给向量*/
-            u0 = data[index];    /*将数组的值赋给u0*/
-            ierr = VecSetValues(temp,1,&index,&u0,INSERT_VALUES);CHKERRQ(ierr);    /*将矩阵赋值给向量*/
+          data[0] = dx; data[1] = dt; data[2] = t;    
+          ierr = VecSet(temp,zero);CHKERRQ(ierr);   
+          for(index=0;index<3;index++){    
+            u0 = data[index];    
+            ierr = VecSetValues(temp,1,&index,&u0,INSERT_VALUES);CHKERRQ(ierr);    
           }
-          ierr = VecAssemblyBegin(temp);CHKERRQ(ierr);    /*通知其余并行块将向量统一*/
-          ierr = VecAssemblyEnd(temp);CHKERRQ(ierr);    /*结束通知*/
+          ierr = VecAssemblyBegin(temp);CHKERRQ(ierr);   
+          ierr = VecAssemblyEnd(temp);CHKERRQ(ierr);    
 
-          ierr = PetscViewerCreate(PETSC_COMM_WORLD,&h5);CHKERRQ(ierr);    /*创建输出指针*/
-          ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_WRITE, &h5);CHKERRQ(ierr);    /*创建输出文件*/
-          ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_z");CHKERRQ(ierr);    /*将z输出的名字命名为explicit-vector*/
-          ierr = PetscObjectSetName((PetscObject) temp, "implicit_heat_temp");CHKERRQ(ierr);    /*将tem输出的名字命名为implicit-necess-data*/
-          ierr = VecView(temp, h5);CHKERRQ(ierr);    /*tem输出到文件*/
-          ierr = VecView(b, h5);CHKERRQ(ierr);    /*z输出到文件*/
-          ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);    /*关闭输出*/
+          ierr = PetscViewerCreate(PETSC_COMM_WORLD,&h5);CHKERRQ(ierr);   
+          ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_WRITE, &h5);CHKERRQ(ierr);   
+          ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_b");CHKERRQ(ierr);   
+          ierr = PetscObjectSetName((PetscObject) temp, "implicit_heat_temp");CHKERRQ(ierr);    
+          ierr = VecView(temp, h5);CHKERRQ(ierr);   
+          ierr = VecView(b, h5);CHKERRQ(ierr);   
+          ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);    
         }
 
   }
