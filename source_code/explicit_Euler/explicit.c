@@ -164,7 +164,6 @@ int main(int argc,char **args)
 
   ierr = VecView(z,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
  
-  //  /*Viewer to output in HDF5 format*/
   //   PetscViewer pv;
   //   PetscViewerCreate(PETSC_COMM_WORLD,&pv);
   //   PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final.dat",&pv);

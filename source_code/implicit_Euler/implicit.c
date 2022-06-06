@@ -15,20 +15,19 @@ int main(int argc,char **args)
   KSP            ksp;
   PC             pc;
   PetscErrorCode ierr;             /* error checking */
-  PetscInt       i, n=200, start=0, end=n, col[3], rstart,rend,nlocal,rank, iteration=0; /* n is region */
+  PetscInt       i, n=100, start=0, end=n, col[3], rstart,rend,nlocal,rank, iteration=0; /* n is region */
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
-  PetscBool      restart = PETSC_FALSE;
+  PetscInt      restart = 0;
   PetscViewer    h5;
 
-  ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;/* initial petsc */
 
-  ierr = PetscOptionsBegin(PETSC_COMM_WORLD,NULL,NULL,NULL);CHKERRQ(ierr); 
+  ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;/* initial petsc */
   ierr = PetscOptionsGetReal(NULL,NULL,"-dt",&dt,NULL);CHKERRQ(ierr); /* read dt from command line */
   ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr); /* read n from command line */
-  ierr = PetscOptionsGetBool(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr); 
-  ierr = PetscOptionsEnd();CHKERRQ(ierr); 
+  ierr = PetscOptionsGetInt(NULL,NULL,"-restart",&restart,NULL);CHKERRQ(ierr); 
+
 
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr); /* set up for MPI */
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr); /* print n */
@@ -89,7 +88,18 @@ int main(int argc,char **args)
   ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatView(A, PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);   /* print the matrix */
 
-  if(restart)
+  ierr = VecSet(b,zero);CHKERRQ(ierr);  /* set vector */
+      if(rank == 0)
+      {
+          for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
+            u0 = exp(i*dx);  /* set u0 */
+            ierr = VecSetValues(b, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
+          }
+      }
+      ierr = VecAssemblyBegin(b);CHKERRQ(ierr); /* Assemble the vector*/
+      ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
+
+  if(restart > 0)
    {   
       ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_READ, &h5);CHKERRQ(ierr);    
       ierr = PetscObjectSetName((PetscObject) z, "implicit_heat_z");CHKERRQ(ierr);    
@@ -106,19 +116,7 @@ int main(int argc,char **args)
       ierr = VecGetValues(tem,1,&index,&t);CHKERRQ(ierr);   
       index= 0;   
     }
-  else 
-    {
-      ierr = VecSet(b,zero);CHKERRQ(ierr);  /* set vector */
-      if(rank == 0)
-      {
-          for(int i=1; i<n; i++){   /* from 1 to n-1 point*/
-            u0 = exp(i*dx);  /* set u0 */
-            ierr = VecSetValues(b, 1, &i, &u0, INSERT_VALUES);CHKERRQ(ierr);
-          }
-      }
-      ierr = VecAssemblyBegin(b);CHKERRQ(ierr); /* Assemble the vector*/
-      ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
-    }
+
 
   ierr = VecSet(u,zero);CHKERRQ(ierr); /* set initial vectot b */
   if(rank == 0){
@@ -142,7 +140,7 @@ int main(int argc,char **args)
 
 
 
-  while(PetscAbsReal(t)<3.0){   /* set the caculate time */
+  while(PetscAbsReal(t)<2.0){   /* set the caculate time */
      t += dt;   /* time advance*/
 
      ierr = VecAXPY(b,1.0,u);CHKERRQ(ierr);    /*right hand size value*/
@@ -180,12 +178,12 @@ int main(int argc,char **args)
 
   ierr = VecView(b,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);  /* view the z vector */
  
-   /*Viewer to output in HDF5 format*/
-  PetscViewer pv;
-  PetscViewerCreate(PETSC_COMM_WORLD,&pv);
-  PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final_implicit.dat",&pv);
-  VecView(b, pv);
-  PetscViewerDestroy(&pv);
+ 
+  // PetscViewer pv;
+  // PetscViewerCreate(PETSC_COMM_WORLD,&pv);
+  // PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final_implicit.dat",&pv);
+  // VecView(b, pv);
+  // PetscViewerDestroy(&pv);
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&temp);CHKERRQ(ierr); 
   ierr = VecDestroy(&x);CHKERRQ(ierr);  
