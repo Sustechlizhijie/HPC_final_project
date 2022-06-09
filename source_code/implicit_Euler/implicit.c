@@ -19,7 +19,7 @@ int main(int argc,char **args)
   PetscReal      p=1.0, c=1.0, k=1.0, alpha, beta, dx, ix, f;/* pck is the physic parameter */
   PetscReal      dt=0.00001, t=0.0, u0=0.0;   /* time step */
   PetscScalar    zero = 0.0, value[3], data[3];  /* u0 initial condition */
-  PetscInt      restart = 0;
+  PetscInt      restart = 0; /* initial value of restart  */
   PetscViewer    h5;
 
 
@@ -33,7 +33,7 @@ int main(int argc,char **args)
   ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\n", n);CHKERRQ(ierr); /* print n */
 
   end=n; /* update the n value */
-
+  /* set values */
   dx=1.0/n;
   alpha = k/p/c;
   beta = alpha*dt/dx/dx;
@@ -99,15 +99,16 @@ int main(int argc,char **args)
       ierr = VecAssemblyBegin(b);CHKERRQ(ierr); /* Assemble the vector*/
       ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
 
-  if(restart > 0)
+  if(restart > 0)/* if input restart is larger than 0 then read the files in */
    {   
-      ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_READ, &h5);CHKERRQ(ierr);    
-      ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_b");CHKERRQ(ierr);    
+      ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_READ, &h5);CHKERRQ(ierr);     /* open to read in */
+      ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_b");CHKERRQ(ierr);     /* set input data name */
       ierr = PetscObjectSetName((PetscObject) temp, "implicit_heat_temp");CHKERRQ(ierr);
-      ierr = VecLoad(temp, h5);CHKERRQ(ierr);    
+      ierr = VecLoad(temp, h5);CHKERRQ(ierr);      /* load data into vector z */
       ierr = VecLoad(b, h5);CHKERRQ(ierr);    
-      ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);  
+      ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);  /* close the input */
 
+    /* inturn to read the input data */
       index=0;    
       ierr = VecGetValues(temp,1,&index,&dx);CHKERRQ(ierr);    
       index += 1;    
@@ -128,14 +129,14 @@ int main(int argc,char **args)
 
   ierr = VecAssemblyBegin(u);CHKERRQ(ierr);  /* Assemble the vector*/
   ierr = VecAssemblyEnd(u);CHKERRQ(ierr); 
-  ierr = VecView(u,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr); 
+  ierr = VecView(u,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);    /* print to see */
 
-
-  ierr = KSPCreate(PETSC_COMM_WORLD,&ksp);CHKERRQ(ierr);
-  ierr = KSPSetOperators(ksp,A,A);CHKERRQ(ierr);
-  ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);    
-  ierr = PCSetType(pc,PCJACOBI);CHKERRQ(ierr);   
-  ierr = KSPSetTolerances(ksp,1.e-10,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);CHKERRQ(ierr);    /*设置各种误差值*/
+  /*set parameter*/
+  ierr = KSPCreate(PETSC_COMM_WORLD,&ksp);CHKERRQ(ierr); /*create ksp space*/
+  ierr = KSPSetOperators(ksp,A,A);CHKERRQ(ierr); /*set coefficient */
+  ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);     
+  ierr = PCSetType(pc,PCJACOBI);CHKERRQ(ierr);  /*set parameter*/ 
+  ierr = KSPSetTolerances(ksp,1.e-10,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT);CHKERRQ(ierr);    /*set parameter*/
   ierr = KSPSetFromOptions(ksp);CHKERRQ(ierr);   
 
 
@@ -153,25 +154,25 @@ int main(int argc,char **args)
      ierr = VecCopy(x,b);CHKERRQ(ierr);  /* copy x into z*/
 
       iteration += 1;    
-        if((iteration % 10)==0)
+        if((iteration % 10)==0) /* for every 10 iteration we take the following action*/
         {    
 
-          data[0] = dx; data[1] = dt; data[2] = t;    
-          ierr = VecSet(temp,zero);CHKERRQ(ierr);   
+          data[0] = dx; data[1] = dt; data[2] = t;      /* give values */
+          ierr = VecSet(temp,zero);CHKERRQ(ierr);     /* initialize */
           for(index=0;index<3;index++){    
             u0 = data[index];    
-            ierr = VecSetValues(temp,1,&index,&u0,INSERT_VALUES);CHKERRQ(ierr);    
+            ierr = VecSetValues(temp,1,&index,&u0,INSERT_VALUES);CHKERRQ(ierr);     /* set values  */
           }
-          ierr = VecAssemblyBegin(temp);CHKERRQ(ierr);   
+          ierr = VecAssemblyBegin(temp);CHKERRQ(ierr);      /* Assemble the vector*/
           ierr = VecAssemblyEnd(temp);CHKERRQ(ierr);    
 
-          ierr = PetscViewerCreate(PETSC_COMM_WORLD,&h5);CHKERRQ(ierr);   
-          ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_WRITE, &h5);CHKERRQ(ierr);   
-          ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_b");CHKERRQ(ierr);   
+          ierr = PetscViewerCreate(PETSC_COMM_WORLD,&h5);CHKERRQ(ierr);     /* create for output */
+          ierr = PetscViewerHDF5Open(PETSC_COMM_WORLD,"implicit_heat.h5", FILE_MODE_WRITE, &h5);CHKERRQ(ierr);    /* output a .h5 file */
+          ierr = PetscObjectSetName((PetscObject) b, "implicit_heat_b");CHKERRQ(ierr);   /* name the output values */
           ierr = PetscObjectSetName((PetscObject) temp, "implicit_heat_temp");CHKERRQ(ierr);    
-          ierr = VecView(temp, h5);CHKERRQ(ierr);   
+          ierr = VecView(temp, h5);CHKERRQ(ierr);    /*output it */
           ierr = VecView(b, h5);CHKERRQ(ierr);   
-          ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);    
+          ierr = PetscViewerDestroy(&h5);CHKERRQ(ierr);     /* finish output*/
         }
 
   }
@@ -184,6 +185,7 @@ int main(int argc,char **args)
   // PetscViewerASCIIOpen(PETSC_COMM_WORLD,"u_final_implicit.dat",&pv);
   // VecView(b, pv);
   // PetscViewerDestroy(&pv);
+  
   /* deallocate the vector and matirx */
   ierr = VecDestroy(&temp);CHKERRQ(ierr); 
   ierr = VecDestroy(&x);CHKERRQ(ierr);  
