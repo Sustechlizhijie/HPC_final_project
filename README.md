@@ -19,3 +19,4 @@ This is a class final project of HPC class. the problem is to solve a 1-D transi
 
 ***More detail is showing in final report***
 
+*Taiyi Path : /work/mae-lizj/HPC_testing/final_project
